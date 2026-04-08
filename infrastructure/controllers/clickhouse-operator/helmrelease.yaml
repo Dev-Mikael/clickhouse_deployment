@@ -7,8 +7,8 @@ spec:
   interval: 30m
   chart:
     spec:
-      chart: clickhouse-operator
-      version: "0.23.*"
+      chart: altinity-clickhouse-operator
+      version: "0.26.*"
       sourceRef:
         kind: HelmRepository
         name: altinity
