@@ -103,7 +103,7 @@ spec:
       - name: data-volume
         spec:
           # Azure Disk Premium SSD — change to "default" for Standard SSD
-          storageClassName: gp2
+          storageClassName: ebs-gp2
           accessModes:
             - ReadWriteOnce
           resources:
@@ -113,7 +113,7 @@ spec:
 
       - name: log-volume
         spec:
-          storageClassName: gp2
+          storageClassName: ebs-gp2
           accessModes:
             - ReadWriteOnce
           resources:

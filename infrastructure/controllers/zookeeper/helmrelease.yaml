@@ -29,7 +29,7 @@ spec:
     persistence:
       enabled: true
       # Azure Disk Premium SSD — change to "default" for Standard SSD
-      storageClass: gp2
+      storageClass: ebs-gp2
       size: 8Gi
 
     resources:
