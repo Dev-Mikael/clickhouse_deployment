@@ -41,7 +41,7 @@ spec:
     # Each shard holds a horizontal partition of data.
     # Each replica is a full copy of its shard (for HA + failover).
     clusters:
-      - name: production-cluster
+      - name: prod-cluster
         layout:
           shardsCount: 2
           replicasCount: 2
