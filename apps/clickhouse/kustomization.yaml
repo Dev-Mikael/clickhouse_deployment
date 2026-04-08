@@ -4,6 +4,5 @@ resources:
   - namespace.yaml
   - cluster-issuer.yaml
   - certificate.yaml
-  - tls-config.yaml
   - sealed-secret.yaml
   - clickhouse-installation.yaml

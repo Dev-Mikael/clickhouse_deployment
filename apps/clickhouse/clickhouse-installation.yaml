@@ -37,6 +37,37 @@ spec:
       default/password: ""
       default/networks/ip: "127.0.0.1"
 
+    # ClickHouse Operator will materialize these into config.d/ inside pods.
+    # This avoids mounting a separate ConfigMap into /etc/clickhouse-server/config.d,
+    # which conflicts with the operator-managed config.d mount.
+    files:
+      config.d/tls.xml: |
+        <clickhouse>
+          <https_port>8443</https_port>
+          <tcp_port_secure>9440</tcp_port_secure>
+
+          <openSSL>
+            <server>
+              <certificateFile>/etc/clickhouse-server/certs/tls.crt</certificateFile>
+              <privateKeyFile>/etc/clickhouse-server/certs/tls.key</privateKeyFile>
+              <caConfig>/etc/clickhouse-server/certs/ca.crt</caConfig>
+              <verificationMode>relaxed</verificationMode>
+              <cacheSessions>true</cacheSessions>
+              <disableProtocols>sslv2,sslv3</disableProtocols>
+              <preferServerCiphers>true</preferServerCiphers>
+            </server>
+            <client>
+              <certificateFile>/etc/clickhouse-server/certs/tls.crt</certificateFile>
+              <privateKeyFile>/etc/clickhouse-server/certs/tls.key</privateKeyFile>
+              <caConfig>/etc/clickhouse-server/certs/ca.crt</caConfig>
+              <verificationMode>relaxed</verificationMode>
+              <invalidCertificateHandler>
+                <name>RejectCertificateHandler</name>
+              </invalidCertificateHandler>
+            </client>
+          </openSSL>
+        </clickhouse>
+
     # Production cluster: 2 shards × 2 replicas = 4 ClickHouse pods total
     # Each shard holds a horizontal partition of data.
     # Each replica is a full copy of its shard (for HA + failover).
@@ -84,19 +115,11 @@ spec:
                 - name: tls-certs
                   mountPath: /etc/clickhouse-server/certs
                   readOnly: true
-                # Mount the TLS XML config that tells ClickHouse to use the cert
-                - name: tls-config
-                  mountPath: /etc/clickhouse-server/config.d/tls.xml
-                  subPath: tls.xml
-                  readOnly: true
 
           volumes:
             - name: tls-certs
               secret:
                 secretName: clickhouse-tls-secret
-            - name: tls-config
-              configMap:
-                name: clickhouse-tls-config
 
     # ── Volume claim templates ─────────────────────────────────────────────
     volumeClaimTemplates:
