@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clickhouse-tls-config
+  namespace: clickhouse
+  labels:
+    app.kubernetes.io/part-of: clickhouse
+data:
+  tls.xml: |
+    <clickhouse>
+      <!-- Enable TLS on HTTPS port 8443 (replaces plain HTTP 8123) -->
+      <https_port>8443</https_port>
+      <!-- Enable TLS on native TCP port 9440 (replaces plain 9000) -->
+      <tcp_port_secure>9440</tcp_port_secure>
+
+      <openSSL>
+        <server>
+          <certificateFile>/etc/clickhouse-server/certs/tls.crt</certificateFile>
+          <privateKeyFile>/etc/clickhouse-server/certs/tls.key</privateKeyFile>
+          <caConfig>/etc/clickhouse-server/certs/ca.crt</caConfig>
+          <!-- relaxed: clients must present a cert but validation is lenient -->
+          <verificationMode>relaxed</verificationMode>
+          <cacheSessions>true</cacheSessions>
+          <disableProtocols>sslv2,sslv3</disableProtocols>
+          <preferServerCiphers>true</preferServerCiphers>
+        </server>
+        <client>
+          <!-- Used for inter-replica traffic over TLS -->
+          <certificateFile>/etc/clickhouse-server/certs/tls.crt</certificateFile>
+          <privateKeyFile>/etc/clickhouse-server/certs/tls.key</privateKeyFile>
+          <caConfig>/etc/clickhouse-server/certs/ca.crt</caConfig>
+          <verificationMode>relaxed</verificationMode>
+          <invalidCertificateHandler>
+            <name>RejectCertificateHandler</name>
+          </invalidCertificateHandler>
+        </client>
+      </openSSL>
+    </clickhouse>

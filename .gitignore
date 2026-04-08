@@ -1,0 +1,23 @@
+# Never commit plain Kubernetes Secrets
+# The CI pipeline also enforces this via grep check
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Helm cache
+.helm/
+
+# Temporary files
+*.tmp
+*.bak
+
+# If you ever generate raw secrets locally, prevent accidental commit
+secret.yaml
+secret-raw.yaml
+*-raw-secret.yaml

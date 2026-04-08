@@ -1,0 +1,32 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: clickhouse-tls
+  namespace: clickhouse
+spec:
+  secretName: clickhouse-tls-secret
+  commonName: clickhouse.clickhouse.svc.cluster.local
+
+  # Cover every DNS name a pod or service might be reached by internally
+  dnsNames:
+    - clickhouse
+    - clickhouse.clickhouse
+    - clickhouse.clickhouse.svc
+    - clickhouse.clickhouse.svc.cluster.local
+    # Wildcard covers all operator-generated pod FQDNs
+    - "*.clickhouse.svc.cluster.local"
+    # ZooKeeper coordination traffic
+    - zookeeper.zookeeper.svc.cluster.local
+
+  duration: 8760h     # 1 year
+  renewBefore: 720h   # auto-renew 30 days before expiry
+
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+
+  issuerRef:
+    name: clickhouse-internal-ca
+    kind: ClusterIssuer
+    group: cert-manager.io

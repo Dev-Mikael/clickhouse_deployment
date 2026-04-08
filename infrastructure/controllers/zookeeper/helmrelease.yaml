@@ -1,0 +1,64 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: zookeeper
+  namespace: zookeeper
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: zookeeper
+      version: "12.x.x"
+      sourceRef:
+        kind: HelmRepository
+        name: bitnami
+        namespace: flux-system
+      interval: 12h
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+    cleanupOnFail: true
+  values:
+    # 3 replicas for quorum (majority needed = 2/3)
+    replicaCount: 3
+
+    persistence:
+      enabled: true
+      # Azure Disk Premium SSD — change to "default" for Standard SSD
+      storageClass: gp2
+      size: 8Gi
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+    # Spread ZooKeeper pods across different nodes for HA
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                    - zookeeper
+            topologyKey: kubernetes.io/hostname
+
+    # Expose ZooKeeper only inside the cluster
+    service:
+      type: ClusterIP
+
+    # ZooKeeper JVM heap tuning
+    heapSize: 256
+
+    # Prometheus metrics (disabled — no monitoring stack requested)
+    metrics:
+      enabled: false

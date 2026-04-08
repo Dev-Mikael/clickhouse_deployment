@@ -1,0 +1,72 @@
+name: Validate Manifests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate Kubernetes Manifests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install FluxCD CLI
+        uses: fluxcd/flux2/action@main
+
+      - name: Install Kustomize
+        run: |
+          curl -sL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Install kubeconform
+        run: |
+          curl -sL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz \
+            | tar xz -C /tmp/
+          sudo mv /tmp/kubeconform /usr/local/bin/
+
+      - name: Validate — infrastructure/sources
+        run: |
+          echo "==> Validating infrastructure/sources"
+          kustomize build infrastructure/sources | kubeconform \
+            --strict \
+            --ignore-missing-schemas \
+            --schema-location default \
+            --schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+
+      - name: Validate — infrastructure/controllers
+        run: |
+          echo "==> Validating infrastructure/controllers"
+          kustomize build infrastructure/controllers | kubeconform \
+            --strict \
+            --ignore-missing-schemas \
+            --schema-location default \
+            --schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+
+      - name: Validate — apps/clickhouse
+        run: |
+          echo "==> Validating apps/clickhouse"
+          kustomize build apps/clickhouse | kubeconform \
+            --strict \
+            --ignore-missing-schemas \
+            --schema-location default \
+            --schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+
+      - name: Flux lint — sources
+        run: flux build kustomization sources \
+          --path ./infrastructure/sources \
+          --dry-run 2>/dev/null || true
+
+      - name: Check for plain Kubernetes Secrets (must not be in Git)
+        run: |
+          echo "==> Scanning for unencrypted Secret resources..."
+          if grep -r 'kind: Secret' apps/ infrastructure/ --include="*.yaml" --include="*.yml"; then
+            echo "❌ ERROR: Plain Kubernetes Secret found in repository!"
+            echo "   Use SealedSecret instead. See sealed-secret.yaml for instructions."
+            exit 1
+          fi
+          echo "✅ No plain Secrets found."

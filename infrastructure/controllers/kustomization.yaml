@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - cert-manager/namespace.yaml
+  - cert-manager/helmrelease.yaml
+  - sealed-secrets/namespace.yaml
+  - sealed-secrets/helmrelease.yaml
+  - clickhouse-operator/namespace.yaml
+  - clickhouse-operator/helmrelease.yaml
+  - zookeeper/namespace.yaml
+  - zookeeper/helmrelease.yaml

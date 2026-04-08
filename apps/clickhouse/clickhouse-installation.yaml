@@ -1,0 +1,121 @@
+apiVersion: clickhouse.altinity.com/v1
+kind: ClickHouseInstallation
+metadata:
+  name: clickhouse
+  namespace: clickhouse
+  labels:
+    app.kubernetes.io/part-of: clickhouse
+    app.kubernetes.io/managed-by: flux
+spec:
+  # ── Defaults applied to every pod/volume in this installation ──────────────
+  defaults:
+    templates:
+      podTemplate: clickhouse-pod
+      dataVolumeClaimTemplate: data-volume
+      logVolumeClaimTemplate: log-volume
+    # Use FQDN for replica addressing (required for multi-node cross-AZ)
+    replicasUseFQDN: "yes"
+
+  # ── Cluster configuration ──────────────────────────────────────────────────
+  configuration:
+    # ZooKeeper coordinates distributed DDL and replication
+    zookeeper:
+      nodes:
+        - host: zookeeper.zookeeper.svc.cluster.local
+          port: 2181
+
+    # Admin user — password is pulled from the SealedSecret, never hardcoded
+    users:
+      # k8s_secret_password format: <namespace>/<secret-name>/<key>
+      admin/k8s_secret_password: clickhouse/clickhouse-credentials/admin-password
+      # Restrict admin access to RFC-1918 private ranges (internal cluster only)
+      admin/networks/ip:
+        - "10.0.0.0/8"
+        - "172.16.0.0/12"
+        - "192.168.0.0/16"
+      # Disable the default insecure user
+      default/password: ""
+      default/networks/ip: "127.0.0.1"
+
+    # Production cluster: 2 shards × 2 replicas = 4 ClickHouse pods total
+    # Each shard holds a horizontal partition of data.
+    # Each replica is a full copy of its shard (for HA + failover).
+    clusters:
+      - name: production-cluster
+        layout:
+          shardsCount: 2
+          replicasCount: 2
+
+  # ── Templates ──────────────────────────────────────────────────────────────
+  templates:
+
+    # ── Pod template ──────────────────────────────────────────────────────────
+    podTemplates:
+      - name: clickhouse-pod
+        spec:
+          # Spread pods across nodes so a single node failure ≠ data loss
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchExpressions:
+                      - key: clickhouse.altinity.com/chi
+                        operator: In
+                        values:
+                          - clickhouse
+                  topologyKey: kubernetes.io/hostname
+
+          containers:
+            - name: clickhouse
+              # Pin to a specific LTS version — update deliberately, not via wildcard
+              image: clickhouse/clickhouse-server:24.3
+              imagePullPolicy: IfNotPresent
+
+              resources:
+                requests:
+                  memory: "2Gi"
+                  cpu: "500m"
+                limits:
+                  memory: "4Gi"
+                  cpu: "2000m"
+
+              # Mount the TLS cert (from cert-manager Certificate)
+              volumeMounts:
+                - name: tls-certs
+                  mountPath: /etc/clickhouse-server/certs
+                  readOnly: true
+                # Mount the TLS XML config that tells ClickHouse to use the cert
+                - name: tls-config
+                  mountPath: /etc/clickhouse-server/config.d/tls.xml
+                  subPath: tls.xml
+                  readOnly: true
+
+          volumes:
+            - name: tls-certs
+              secret:
+                secretName: clickhouse-tls-secret
+            - name: tls-config
+              configMap:
+                name: clickhouse-tls-config
+
+    # ── Volume claim templates ─────────────────────────────────────────────
+    volumeClaimTemplates:
+      - name: data-volume
+        spec:
+          # Azure Disk Premium SSD — change to "default" for Standard SSD
+          storageClassName: gp2
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              # Main data directory — increase based on expected data volume
+              storage: 100Gi
+
+      - name: log-volume
+        spec:
+          storageClassName: gp2
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi

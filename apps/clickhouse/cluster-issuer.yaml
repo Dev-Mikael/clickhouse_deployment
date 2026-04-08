@@ -1,0 +1,45 @@
+# WHY SELF-SIGNED AND NOT LET'S ENCRYPT:
+# Let's Encrypt requires a publicly reachable HTTP/DNS endpoint to issue certificates.
+# Since ClickHouse is ClusterIP-only (internal), we use a self-signed CA instead.
+# If you expose ClickHouse via Ingress in the future, swap the ClusterIssuer below
+# to use an ACME/Let's Encrypt issuer and update certificate.yaml accordingly.
+
+---
+# Step 1: A bootstrapping issuer that signs nothing except our CA certificate
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-bootstrap
+spec:
+  selfSigned: {}
+
+---
+# Step 2: The root CA certificate — signed by the bootstrap issuer
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: clickhouse-root-ca
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: clickhouse-internal-ca
+  secretName: clickhouse-root-ca-secret
+  duration: 87600h      # 10 years
+  renewBefore: 720h     # renew 30 days before expiry
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: selfsigned-bootstrap
+    kind: ClusterIssuer
+    group: cert-manager.io
+
+---
+# Step 3: The CA-backed issuer — all ClickHouse certs are signed by this
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: clickhouse-internal-ca
+spec:
+  ca:
+    secretName: clickhouse-root-ca-secret
