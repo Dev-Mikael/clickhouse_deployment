@@ -25,9 +25,9 @@ spec:
   values:
     replicaCount: 3
     image:
-      registry: docker.io
+      registry: public.ecr.aws
       repository: bitnami/zookeeper
-      tag: 3.9
+      tag: 3.9.2
     persistence:
       enabled: true
       storageClass: ebs-gp2
