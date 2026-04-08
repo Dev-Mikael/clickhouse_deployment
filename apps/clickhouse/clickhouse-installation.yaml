@@ -73,10 +73,10 @@ spec:
 
               resources:
                 requests:
-                  memory: "2Gi"
+                  memory: "1Gi"
                   cpu: "500m"
                 limits:
-                  memory: "4Gi"
+                  memory: "2Gi"
                   cpu: "2000m"
 
               # Mount the TLS cert (from cert-manager Certificate)
