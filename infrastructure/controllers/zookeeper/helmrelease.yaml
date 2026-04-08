@@ -23,17 +23,15 @@ spec:
       remediateLastFailure: true
     cleanupOnFail: true
   values:
-    # 3 replicas for quorum (majority needed = 2/3)
     replicaCount: 3
     image:
-    tag: 3.9.3-debian-12-r0 
-
+      registry: docker.io
+      repository: bitnami/zookeeper
+      tag: 3.9
     persistence:
       enabled: true
-      # Azure Disk Premium SSD — change to "default" for Standard SSD
       storageClass: ebs-gp2
       size: 8Gi
-
     resources:
       requests:
         cpu: 100m
@@ -41,8 +39,6 @@ spec:
       limits:
         cpu: 500m
         memory: 512Mi
-
-    # Spread ZooKeeper pods across different nodes for HA
     affinity:
       podAntiAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
@@ -53,14 +49,8 @@ spec:
                   values:
                     - zookeeper
             topologyKey: kubernetes.io/hostname
-
-    # Expose ZooKeeper only inside the cluster
     service:
       type: ClusterIP
-
-    # ZooKeeper JVM heap tuning
     heapSize: 256
-
-    # Prometheus metrics (disabled — no monitoring stack requested)
     metrics:
       enabled: false
